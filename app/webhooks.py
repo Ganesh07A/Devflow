@@ -17,7 +17,7 @@ def verify_signature(payload: bytes, signature: str, secret: str) -> bool:
         hashlib.sha256
     ).hexdigest()
 
-    return hmac.compare_digest(f"shad256={expected}", signature)
+    return hmac.compare_digest(f"sha256={expected}", signature)
 
 @router.post("/webhook/github")
 async def github_webhook(req: Request):
@@ -35,10 +35,11 @@ async def github_webhook(req: Request):
     event = req.headers.get("X-GitHub-Event")
     data = await req.json()
 
+    print(f"✅ Webhook received! Event: {event}")  # Add for debugging
 
     # handles pull request events
 
-    if event == "pull_requrest":
+    if event == "pull_request":
         action=data.get("action")
 
         if action == "opened":
@@ -60,6 +61,9 @@ async def github_webhook(req: Request):
         
     elif event == "ping":
         # github sends this when webhook is first created 
+        print("🏓 Ping received!")
+        
         return {"status":"pong"}
 
     return {"status": "event ignored "}
+
