@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, HTTPException
 import hmac
 import hashlib
 from app.config import settings
+from app.review import process_pr_review
 
 router  = APIRouter()
 
@@ -53,6 +54,16 @@ async def github_webhook(req: Request):
             print(f" Author: {author}")
 
             # here we add AI review later 
+            try: 
+                await process_pr_review(repo, pr_number, data["pull_request"])
+
+            except Exception as e:
+                print("review Failed!")
+                return { 
+                    "status": "error",
+                    "message": str(e)
+                }
+
 
             return{
                 "status": "received",
