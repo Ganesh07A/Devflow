@@ -1,22 +1,37 @@
-from google import genai
 import os
+import re
+import time
+from pathlib import Path
 from dotenv import load_dotenv
+from google import genai
+from google.api_core.exceptions import ResourceExhausted
 
-load_dotenv()
+# --- 1. SETUP ---
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
-api_key = os.getenv("GEMINI_API_KEY")
+raw_key = os.getenv("GEMINI_API_KEY", "")
+clean_key = re.sub(r'[^a-zA-Z0-9_\-]', '', raw_key)
+
+# --- 2. USE THE GENERIC ALIAS ---
+# This is the safest bet from your list. 
+# It usually points to the most available model.
+MODEL_ID = 'gemini-flash-latest' 
 
 try:
-    client = genai.Client(api_key=api_key)
+    print(f"🔄 Connecting to {MODEL_ID}...")
+    client = genai.Client(api_key=clean_key)
     
-    # CHANGED: 'gemini-2.5' -> 'gemini-1.5-flash'
     response = client.models.generate_content(
-        model='gemini-1.5-flash', 
-        contents='Say hello!'
+        model=MODEL_ID, 
+        contents='Hello! Just one word reply please.'
     )
     
-    print("✅ Gemini works!")
-    print(f"Response: {response.text}")
+    print(f"\n✅ SUCCESS! Response:\n{response.text}")
 
+except ResourceExhausted:
+    print("\n⚠️ QUOTA BLOCKED.")
+    print("   The API is saying your Free Tier limit is 0 for this model.")
+    print("   To fix this, you likely need to add a billing card at: https://aistudio.google.com/")
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"\n❌ Error: {e}")
