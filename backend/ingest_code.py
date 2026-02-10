@@ -2,46 +2,51 @@ import os
 import glob
 import re
 import time
-import requests  # <--- New Standard Library
+import requests
 from dotenv import load_dotenv
+from pathlib import Path
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from app.database import SessionLocal, engine
 from app.models import CodeSnippet, Base
 
 # --- 1. SETUP ---
-load_dotenv()
+env_path = Path(__file__).parent / '.env'
+load_dotenv(dotenv_path=env_path, override=True)
 
 raw_key = os.getenv("GEMINI_API_KEY", "")
 clean_key = re.sub(r'[^a-zA-Z0-9_\-]', '', raw_key)
 
 if not clean_key:
-    print("❌ Error: GEMINI_API_KEY not found.")
+    print("❌ Error: GEMINI_API_KEY not found in .env")
     exit()
 
-print(f"🔑 Key Loaded: {clean_key[:5]}... (Using Direct HTTP Mode)")
+print(f"🔑 Key Loaded: {clean_key[:5]}... (Length: {len(clean_key)})")
 
-# --- 2. THE DIRECT API FUNCTION ---
-def get_embedding_direct(text):
-    """Calls Gemini REST API directly to bypass SDK authentication bugs"""
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/text-embedding-004:embedContent?key={clean_key}"
+# --- 2. FIXED API FUNCTION (With Output Dimensionality) ---
+def get_embedding_headers(text):
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent"
+    
+    headers = {
+        "Content-Type": "application/json",
+        "x-goog-api-key": clean_key
+    }
     
     payload = {
-        "model": "models/text-embedding-004",
+        "model": "models/gemini-embedding-001",
         "content": {
             "parts": [{"text": text}]
-        }
+        },
+        "outputDimensionality": 768  # <--- THIS FIXES THE CRASH
     }
     
     try:
-        # Send POST request
-        response = requests.post(url, json=payload, timeout=10)
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
         
         if response.status_code != 200:
             print(f"   ⚠️ API Error {response.status_code}: {response.text[:200]}")
             return None
             
         data = response.json()
-        # Extract the vector list
         return data["embedding"]["values"]
         
     except Exception as e:
@@ -51,6 +56,20 @@ def get_embedding_direct(text):
 def ingest_files():
     print("🚀 Starting Ingestion to Neon DB...")
     
+    # Check connection first
+    print("   Testing API connection...")
+    test_vec = get_embedding_headers("test")
+    if not test_vec:
+        print("❌ Critical: API Test Failed. Aborting.")
+        return
+    
+    # Check dimensions
+    if len(test_vec) != 768:
+        print(f"❌ Error: Model returned {len(test_vec)} dimensions, expected 768.")
+        return
+        
+    print("   ✅ API Connection successful (Dimensions: 768)!")
+
     Base.metadata.create_all(bind=engine)
     session = SessionLocal()
     
@@ -80,12 +99,10 @@ def ingest_files():
                 if not content.strip(): continue
 
                 chunks = splitter.split_text(content)
-                
                 print(f"   Processing: {file_path} ({len(chunks)} chunks)...")
                 
                 for chunk_text in chunks:
-                    # USE THE NEW DIRECT FUNCTION
-                    vector = get_embedding_direct(chunk_text)
+                    vector = get_embedding_headers(chunk_text)
                     
                     if vector:
                         snippet = CodeSnippet(
@@ -95,10 +112,9 @@ def ingest_files():
                         )
                         session.add(snippet)
                         count += 1
-                        # Sleep slightly to be nice to the API
                         time.sleep(0.2)
                     else:
-                        print(f"      ❌ Failed to embed chunk in {file_path}")
+                        print(f"      ❌ Failed chunk in {file_path}")
 
             except Exception as e:
                 print(f"   ⚠️ File Error {file_path}: {e}")
