@@ -5,4 +5,5 @@ python-dotenv==1.0.0
 pydantic-settings==2.1.0
 sqlalchemy==2.0.23
 psycopg2-binary==2.9.9
-anthropic==0.7.7
+pgvector
+langchain-text-splitters

@@ -30,7 +30,7 @@ DevFlow is an intelligent code review assistant that automatically analyzes pull
 - **FastAPI** - Modern Python web framework
 - **SQLAlchemy** - Database ORM
 - **PostgreSQL** - Primary database
-- **Anthropic Claude API** - AI code analysis
+- **Google Gemini API** - AI code analysis
 - **GitHub API** - Repository integration
 
 ### Frontend (Coming Soon)
@@ -51,7 +51,7 @@ Before you begin, ensure you have:
 - **Python 3.11+** installed
 - **PostgreSQL 15+** installed and running
 - **GitHub account** with a repository for testing
-- **Anthropic API key** ([Get one here](https://console.anthropic.com/))
+- **Google Gemini API key** ([Get one here](https://aistudio.google.com/))
 - **GitHub Personal Access Token** ([Create one here](https://github.com/settings/tokens))
 
 ---
@@ -98,6 +98,8 @@ psql -U postgres
 
 # Create database
 CREATE DATABASE devflow;
+\c devflow
+CREATE EXTENSION vector;
 
 # Exit
 \q
@@ -115,8 +117,8 @@ DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@localhost:5432/devflow
 GITHUB_TOKEN=ghp_your_github_token_here
 WEBHOOK_SECRET=your_random_secret_string
 
-# Anthropic AI
-ANTHROPIC_API_KEY=sk-ant-api03-your_key_here
+# Google Gemini
+GEMINI_API_KEY=AIzaSy...
 ```
 
 **Important:** Replace the placeholder values with your actual credentials!
@@ -329,10 +331,10 @@ with engine.connect() as connection:
 - Verify WEBHOOK_SECRET matches in GitHub and `.env`
 - Check signature verification in `webhooks.py`
 
-### Issue: "Invalid API key" (Anthropic)
+### Issue: "Invalid API key" (Gemini)
 
 **Solution:**
-- Verify API key starts with `sk-ant-api03-`
+- Verify API key in Google AI Studio
 - Check for extra spaces in `.env`
 - Ensure you have credits remaining
 

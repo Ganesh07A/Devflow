@@ -1,30 +1,32 @@
 import os
+import re
+import requests
 from dotenv import load_dotenv
-from google import genai
 from pathlib import Path
 
-# --- 1. LOAD ENV (Same as before) ---
+# Load API Key
+# Load API Key
 env_path = Path(__file__).parent / '.env'
-load_dotenv(dotenv_path=env_path, override=True)
-api_key = os.getenv("GEMINI_API_KEY")
+print(f"Checking for .env at: {env_path.resolve()}")
+if env_path.exists():
+    load_dotenv(dotenv_path=env_path, override=True)
+else:
+    print(" .env file does not exist!")
+
+raw_key = os.getenv("GEMINI_API_KEY", "")
+clean_key = re.sub(r'[^a-zA-Z0-9_\-]', '', raw_key)
+
+url = f"https://generativelanguage.googleapis.com/v1beta/models?key={clean_key}"
 
 try:
-    client = genai.Client(api_key=api_key)
-    print(f"🔍 Listing models using key: {api_key[:5]}...\n")
-
-    # --- 2. LIST ALL MODELS (No filtering to avoid errors) ---
-    count = 0
-    for m in client.models.list():
-        # Only print models that look like "gemini" to keep the list clean
-        if "gemini" in m.name:
-            print(f"✅ Found: {m.name}")
-            print(f"   Display Name: {m.display_name}")
-            count += 1
-
-    if count == 0:
-        print("⚠️ No 'gemini' models found. Printing EVERYTHING:")
-        for m in client.models.list():
-            print(f" - {m.name}")
-
+    response = requests.get(url)
+    if response.status_code == 200:
+        models = response.json().get('models', [])
+        print(f"✅ Found {len(models)} models:")
+        for m in models:
+            if "generateContent" in m.get("supportedGenerationMethods", []):
+                print(f" - {m['name']}")
+    else:
+        print(f"❌ Error {response.status_code}: {response.text}")
 except Exception as e:
-    print(f"❌ Error: {e}")
+    print(f"❌ Connection Error: {e}")
