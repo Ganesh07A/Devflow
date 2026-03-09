@@ -1,7 +1,6 @@
 from app.github import get_pr_diff, post_pr_comment, get_pr_files
-# from app.ai import analyze_code, format_review_comment
-
-from app.gemini_ai import analyze_code, format_review_comment
+from app.ai import analyze_code, format_review_comment
+# from app.gemini_ai import analyze_code, format_review_comment
 from app.database import SessionLocal
 from app.models import PullRequest, CodeReview
 from datetime import datetime
